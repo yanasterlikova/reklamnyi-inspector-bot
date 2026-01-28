@@ -439,31 +439,65 @@ async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE, url: st
         await send_brief_report(update, context, analysis_result, material_info)
         
         # Генерируем HTML-отчет
-        html_path = report_generator.save_report(analysis_result, material_info, format='html')
+        try:
+            logger.info("Генерирую HTML-отчет...")
+            html_path = report_generator.save_report(analysis_result, material_info, format='html')
+            logger.info(f"HTML-отчет создан: {html_path}")
+        except Exception as e:
+            logger.error(f"Ошибка генерации HTML-отчета: {e}", exc_info=True)
+            await update.message.reply_text(
+                "❌ Ошибка при генерации отчета. Попробуй еще раз."
+            )
+            return
         
         # Конвертируем в PDF
-        if html_path and os.path.exists(html_path):
-            pdf_filename = os.path.basename(html_path).replace('.html', '')
-            pdf_path = pdf_generator.generate_from_html_file(html_path, pdf_filename)
-            
-            if pdf_path and os.path.exists(pdf_path):
-                # Отправляем PDF
-                with open(pdf_path, 'rb') as f:
-                    await update.message.reply_document(
-                        document=f,
-                        filename=f"Отчет_РекламныйИнспектор_{datetime.now().strftime('%Y%m%d')}.pdf",
-                        caption="📄 Полный PDF-отчет с детальными рекомендациями"
-                    )
+        try:
+            if html_path and os.path.exists(html_path):
+                logger.info("Конвертирую HTML в PDF...")
+                pdf_filename = os.path.basename(html_path).replace('.html', '')
+                pdf_path = pdf_generator.generate_from_html_file(html_path, pdf_filename)
+                logger.info(f"PDF создан: {pdf_path}")
                 
-                # Сохраняем проверку в базу
-                db.save_check(
-                    telegram_id=telegram_id,
-                    material_type='site',
-                    material_url=url,
-                    verdict=analysis_result.get('verdict', 'ERROR'),
-                    violations_count=analysis_result.get('total_violations', 0),
-                    report_path=pdf_path
+                if pdf_path and os.path.exists(pdf_path):
+                    logger.info("Отправляю PDF пользователю...")
+                    # Отправляем PDF
+                    with open(pdf_path, 'rb') as f:
+                        await update.message.reply_document(
+                            document=f,
+                            filename=f"Отчет_РекламныйИнспектор_{datetime.now().strftime('%Y%m%d')}.pdf",
+                            caption="📄 Полный PDF-отчет с детальными рекомендациями"
+                        )
+                    logger.info("PDF успешно отправлен")
+                    
+                    # Сохраняем проверку в базу
+                    try:
+                        db.save_check(
+                            telegram_id=telegram_id,
+                            material_type='site',
+                            material_url=url,
+                            verdict=analysis_result.get('verdict', 'ERROR'),
+                            violations_count=analysis_result.get('total_violations', 0),
+                            report_path=pdf_path
+                        )
+                        logger.info("Проверка сохранена в базу данных")
+                    except Exception as e:
+                        logger.error(f"Ошибка сохранения в базу: {e}", exc_info=True)
+                else:
+                    logger.error(f"PDF файл не создан или не найден: {pdf_path}")
+                    await update.message.reply_text(
+                        "❌ Ошибка при создании PDF-отчета. Попробуй еще раз."
+                    )
+            else:
+                logger.error(f"HTML файл не создан или не найден: {html_path}")
+                await update.message.reply_text(
+                    "❌ Ошибка при создании HTML-отчета. Попробуй еще раз."
                 )
+        except Exception as e:
+            logger.error(f"Ошибка при генерации/отправке PDF: {e}", exc_info=True)
+            await update.message.reply_text(
+                f"❌ Ошибка при создании PDF-отчета: {str(e)}\n\n"
+                "Попробуй еще раз или отправь текст материала."
+            )
         
     except Exception as e:
         logger.error(f"Ошибка при анализе URL: {e}")
@@ -493,31 +527,65 @@ async def handle_text_material(update: Update, context: ContextTypes.DEFAULT_TYP
         await send_brief_report(update, context, analysis_result, material_info)
         
         # Генерируем HTML-отчет
-        html_path = report_generator.save_report(analysis_result, material_info, format='html')
+        try:
+            logger.info("Генерирую HTML-отчет...")
+            html_path = report_generator.save_report(analysis_result, material_info, format='html')
+            logger.info(f"HTML-отчет создан: {html_path}")
+        except Exception as e:
+            logger.error(f"Ошибка генерации HTML-отчета: {e}", exc_info=True)
+            await update.message.reply_text(
+                "❌ Ошибка при генерации отчета. Попробуй еще раз."
+            )
+            return
         
         # Конвертируем в PDF
-        if html_path and os.path.exists(html_path):
-            pdf_filename = os.path.basename(html_path).replace('.html', '')
-            pdf_path = pdf_generator.generate_from_html_file(html_path, pdf_filename)
-            
-            if pdf_path and os.path.exists(pdf_path):
-                # Отправляем PDF
-                with open(pdf_path, 'rb') as f:
-                    await update.message.reply_document(
-                        document=f,
-                        filename=f"Отчет_РекламныйИнспектор_{datetime.now().strftime('%Y%m%d')}.pdf",
-                        caption="📄 Полный PDF-отчет с детальными рекомендациями"
-                    )
+        try:
+            if html_path and os.path.exists(html_path):
+                logger.info("Конвертирую HTML в PDF...")
+                pdf_filename = os.path.basename(html_path).replace('.html', '')
+                pdf_path = pdf_generator.generate_from_html_file(html_path, pdf_filename)
+                logger.info(f"PDF создан: {pdf_path}")
                 
-                # Сохраняем проверку в базу
-                db.save_check(
-                    telegram_id=telegram_id,
-                    material_type='text',
-                    material_url=text[:100],
-                    verdict=analysis_result.get('verdict', 'ERROR'),
-                    violations_count=analysis_result.get('total_violations', 0),
-                    report_path=pdf_path
+                if pdf_path and os.path.exists(pdf_path):
+                    logger.info("Отправляю PDF пользователю...")
+                    # Отправляем PDF
+                    with open(pdf_path, 'rb') as f:
+                        await update.message.reply_document(
+                            document=f,
+                            filename=f"Отчет_РекламныйИнспектор_{datetime.now().strftime('%Y%m%d')}.pdf",
+                            caption="📄 Полный PDF-отчет с детальными рекомендациями"
+                        )
+                    logger.info("PDF успешно отправлен")
+                    
+                    # Сохраняем проверку в базу
+                    try:
+                        db.save_check(
+                            telegram_id=telegram_id,
+                            material_type='text',
+                            material_url=text[:100],
+                            verdict=analysis_result.get('verdict', 'ERROR'),
+                            violations_count=analysis_result.get('total_violations', 0),
+                            report_path=pdf_path
+                        )
+                        logger.info("Проверка сохранена в базу данных")
+                    except Exception as e:
+                        logger.error(f"Ошибка сохранения в базу: {e}", exc_info=True)
+                else:
+                    logger.error(f"PDF файл не создан или не найден: {pdf_path}")
+                    await update.message.reply_text(
+                        "❌ Ошибка при создании PDF-отчета. Попробуй еще раз."
+                    )
+            else:
+                logger.error(f"HTML файл не создан или не найден: {html_path}")
+                await update.message.reply_text(
+                    "❌ Ошибка при создании HTML-отчета. Попробуй еще раз."
                 )
+        except Exception as e:
+            logger.error(f"Ошибка при генерации/отправке PDF: {e}", exc_info=True)
+            await update.message.reply_text(
+                f"❌ Ошибка при создании PDF-отчета: {str(e)}\n\n"
+                "Попробуй еще раз или отправь текст материала."
+            )
         
     except Exception as e:
         logger.error(f"Ошибка при анализе текста: {e}")
