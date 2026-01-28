@@ -61,15 +61,16 @@ ASKING_NAME, ASKING_PHONE, ASKING_GDPR = range(3)
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Команда /start - начало регистрации или приветствие"""
-    user = update.effective_user
-    telegram_id = str(user.id)
-    
-    # Проверяем, зарегистрирован ли пользователь
-    if db.is_user_registered(telegram_id):
-        user_data = db.get_user(telegram_id)
-        checks_count = db.get_user_checks_count(telegram_id)
+    try:
+        user = update.effective_user
+        telegram_id = str(user.id)
         
-        welcome_text = f"""
+        # Проверяем, зарегистрирован ли пользователь
+        if db.is_user_registered(telegram_id):
+            user_data = db.get_user(telegram_id)
+            checks_count = db.get_user_checks_count(telegram_id)
+            
+            welcome_text = f"""
 🔍 **РЕКЛАМНЫЙ ИНСПЕКТОР**
 
 С возвращением, {user_data.get('full_name', user.first_name)}!
@@ -89,14 +90,14 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 Отправь мне URL или текст для проверки! 👇
 """
-        
-        await update.message.reply_text(
-            welcome_text,
-            parse_mode=ParseMode.MARKDOWN
-        )
-    else:
-        # Начинаем регистрацию
-        welcome_text = f"""
+            
+            await update.message.reply_text(
+                welcome_text,
+                parse_mode=ParseMode.MARKDOWN
+            )
+        else:
+            # Начинаем регистрацию
+            welcome_text = f"""
 🔍 **РЕКЛАМНЫЙ ИНСПЕКТОР**
 
 Привет, {user.first_name}!
@@ -113,13 +114,22 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 Как тебя зовут? (Имя и Фамилия)
 """
-        
-        await update.message.reply_text(
-            welcome_text,
-            parse_mode=ParseMode.MARKDOWN
-        )
-        
-        return ASKING_NAME
+            
+            await update.message.reply_text(
+                welcome_text,
+                parse_mode=ParseMode.MARKDOWN
+            )
+            
+            return ASKING_NAME
+    except Exception as e:
+        logger.error(f"Ошибка в start_command: {e}", exc_info=True)
+        try:
+            await update.message.reply_text(
+                "❌ Произошла ошибка. Попробуй еще раз: /start"
+            )
+        except:
+            pass
+        return ConversationHandler.END
 
 
 async def asking_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -386,30 +396,39 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def handle_material(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработка материала (URL или текст)"""
-    telegram_id = str(update.effective_user.id)
-    
-    # Проверяем регистрацию
-    if not db.is_user_registered(telegram_id):
-        await update.message.reply_text(
-            "⚠️ Для проверки материалов нужна регистрация.\n\n"
-            "Отправь /start для регистрации.",
-            parse_mode=ParseMode.MARKDOWN
-        )
-        return
-    
-    text = update.message.text.strip()
-    
-    # Пропускаем команды
-    if text.startswith('/'):
-        return
-    
-    # Определяем тип материала
-    is_url = text.startswith('http://') or text.startswith('https://')
-    
-    if is_url:
-        await handle_url(update, context, text)
-    else:
-        await handle_text_material(update, context, text)
+    try:
+        telegram_id = str(update.effective_user.id)
+        
+        # Проверяем регистрацию
+        if not db.is_user_registered(telegram_id):
+            await update.message.reply_text(
+                "⚠️ Для проверки материалов нужна регистрация.\n\n"
+                "Отправь /start для регистрации.",
+                parse_mode=ParseMode.MARKDOWN
+            )
+            return
+        
+        text = update.message.text.strip()
+        
+        # Пропускаем команды
+        if text.startswith('/'):
+            return
+        
+        # Определяем тип материала
+        is_url = text.startswith('http://') or text.startswith('https://')
+        
+        if is_url:
+            await handle_url(update, context, text)
+        else:
+            await handle_text_material(update, context, text)
+    except Exception as e:
+        logger.error(f"Ошибка в handle_material: {e}", exc_info=True)
+        try:
+            await update.message.reply_text(
+                "❌ Произошла ошибка при обработке запроса. Попробуй еще раз."
+            )
+        except:
+            pass
 
 
 async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE, url: str):
