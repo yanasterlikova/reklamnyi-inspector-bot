@@ -68,12 +68,19 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Проверяем, зарегистрирован ли пользователь
         if db.is_user_registered(telegram_id):
             user_data = db.get_user(telegram_id)
+            if not user_data:
+                logger.error(f"get_user вернул None для telegram_id: {telegram_id}")
+                await update.message.reply_text(
+                    "❌ Ошибка получения данных пользователя. Попробуй /start еще раз."
+                )
+                return ConversationHandler.END
+            
             checks_count = db.get_user_checks_count(telegram_id)
             
             welcome_text = f"""
 🔍 **РЕКЛАМНЫЙ ИНСПЕКТОР**
 
-С возвращением, {user_data.get('full_name', user.first_name)}!
+С возвращением, {user_data.get('full_name', user.first_name) if isinstance(user_data, dict) else user.first_name}!
 
 📊 Ваша статистика:
 • Проверок выполнено: {checks_count}
@@ -344,6 +351,12 @@ async def profile_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     user_data = db.get_user(telegram_id)
+    if not user_data or not isinstance(user_data, dict):
+        await update.message.reply_text(
+            "❌ Ошибка получения данных профиля. Попробуй /start еще раз."
+        )
+        return
+    
     checks_count = db.get_user_checks_count(telegram_id)
     
     profile_text = f"""

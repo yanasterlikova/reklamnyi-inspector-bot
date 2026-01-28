@@ -188,30 +188,63 @@ class Database:
     
     def get_user(self, telegram_id: str) -> Optional[Dict]:
         """Получить пользователя по telegram_id"""
-        conn = self._get_connection()
-        cursor = conn.cursor()
-        
-        if self.use_postgresql:
-            cursor.execute('SELECT * FROM users WHERE telegram_id = %s', (telegram_id,))
-        else:
-            cursor.execute('SELECT * FROM users WHERE telegram_id = ?', (telegram_id,))
-        
-        row = cursor.fetchone()
-        conn.close()
-        
-        if row:
+        try:
+            conn = self._get_connection()
+            cursor = conn.cursor()
+            
             if self.use_postgresql:
-                if self.use_psycopg3:
-                    # psycopg3 возвращает Row объект (как SQLite)
-                    return dict(row)
-                else:
-                    # psycopg2 возвращает tuple, конвертируем в dict
-                    columns = [desc[0] for desc in cursor.description]
-                    return dict(zip(columns, row))
+                cursor.execute('SELECT * FROM users WHERE telegram_id = %s', (telegram_id,))
             else:
-                # SQLite уже возвращает Row объект
-                return dict(row)
-        return None
+                cursor.execute('SELECT * FROM users WHERE telegram_id = ?', (telegram_id,))
+            
+            row = cursor.fetchone()
+            
+            if row:
+                result = None
+                if self.use_postgresql:
+                    if self.use_psycopg3:
+                        # psycopg3 возвращает Row объект (как SQLite)
+                        result = dict(row)
+                    else:
+                        # psycopg2 возвращает tuple, конвертируем в dict
+                        # ВАЖНО: получаем описание ДО закрытия соединения
+                        if cursor.description:
+                            columns = [desc[0] for desc in cursor.description]
+                            # Проверяем что row это tuple или list
+                            if isinstance(row, (tuple, list)):
+                                result = dict(zip(columns, row))
+                            else:
+                                # Если это уже dict-like объект, пытаемся преобразовать
+                                try:
+                                    result = dict(row)
+                                except (TypeError, ValueError):
+                                    # Fallback: создаем словарь вручную
+                                    result = {col: row[i] for i, col in enumerate(columns)}
+                        else:
+                            # Если description недоступен, пытаемся преобразовать напрямую
+                            try:
+                                result = dict(row)
+                            except (TypeError, ValueError):
+                                logger.error(f"Не удалось преобразовать row в dict: {type(row)}")
+                                result = None
+                else:
+                    # SQLite уже возвращает Row объект
+                    result = dict(row)
+                
+                conn.close()
+                return result
+            
+            conn.close()
+            return None
+        except Exception as e:
+            logger.error(f"Ошибка в get_user для telegram_id {telegram_id}: {e}", exc_info=True)
+            import traceback
+            traceback.print_exc()
+            try:
+                conn.close()
+            except:
+                pass
+            return None
     
     def is_user_registered(self, telegram_id: str) -> bool:
         """Проверить, зарегистрирован ли пользователь"""
