@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: reklamnyi-inspector-bot
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python bot.py
+    envVars:
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: ADMIN_CHAT_ID
+        sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: reklamnyi-inspector-db
+          property: connectionString
+      - key: LOG_LEVEL
+        value: INFO
+
+databases:
+  - name: reklamnyi-inspector-db
+    plan: free

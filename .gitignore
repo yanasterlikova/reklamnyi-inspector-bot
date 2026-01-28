@@ -1,0 +1,40 @@
+# Конфигурация
+.env
+*.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+dist/
+*.egg-info/
+
+# Логи
+*.log
+logs/
+
+# Данные
+data/
+*.db
+*.sqlite
+
+# Отчеты (опционально, можно убрать если нужны в git)
+# reports/*.html
+# reports/*.md
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
