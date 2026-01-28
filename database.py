@@ -44,8 +44,14 @@ class Database:
     
     def init_db(self):
         """Инициализация базы данных"""
-        conn = self._get_connection()
-        cursor = conn.cursor()
+        try:
+            conn = self._get_connection()
+            cursor = conn.cursor()
+        except Exception as e:
+            print(f"ERROR: Не удалось подключиться к базе данных: {e}")
+            if self.use_postgresql:
+                print(f"ERROR: DATABASE_URL: {'установлен' if DATABASE_URL else 'не установлен'}")
+            raise
         
         if self.use_postgresql:
             # PostgreSQL синтаксис

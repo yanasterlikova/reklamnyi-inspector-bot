@@ -31,11 +31,21 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Проверка обязательных переменных окружения
+if not TELEGRAM_BOT_TOKEN:
+    logger.error("TELEGRAM_BOT_TOKEN не установлен! Установите переменную окружения.")
+    raise ValueError("TELEGRAM_BOT_TOKEN обязателен для работы бота")
+
 # Инициализация компонентов
-analyzer = MaterialAnalyzer()
-report_generator = ReportGenerator()
-pdf_generator = PDFGenerator()
-db = Database()
+try:
+    analyzer = MaterialAnalyzer()
+    report_generator = ReportGenerator()
+    pdf_generator = PDFGenerator()
+    db = Database()
+    logger.info("Компоненты инициализированы успешно")
+except Exception as e:
+    logger.error(f"Ошибка инициализации компонентов: {e}")
+    raise
 
 # Состояния для регистрации
 ASKING_NAME, ASKING_PHONE, ASKING_GDPR = range(3)
@@ -560,12 +570,19 @@ async def send_brief_report(
 
 def main():
     """Запуск бота"""
-    if not TELEGRAM_BOT_TOKEN:
-        logger.error("TELEGRAM_BOT_TOKEN не установлен!")
-        return
-    
-    # Создаем приложение
-    application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+    try:
+        if not TELEGRAM_BOT_TOKEN:
+            logger.error("TELEGRAM_BOT_TOKEN не установлен!")
+            print("ERROR: TELEGRAM_BOT_TOKEN не установлен!")
+            return
+        
+        logger.info("Начинаю запуск бота...")
+        logger.info(f"LOG_LEVEL: {LOG_LEVEL}")
+        logger.info(f"ADMIN_CHAT_ID: {'установлен' if ADMIN_CHAT_ID else 'не установлен'}")
+        
+        # Создаем приложение
+        application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+        logger.info("Приложение создано успешно")
     
     # Регистрация пользователя (ConversationHandler)
     conv_handler = ConversationHandler(
@@ -591,9 +608,14 @@ def main():
     # Обработка материалов
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_material))
     
-    # Запускаем бота
-    logger.info("🔍 Рекламный Инспектор запущен!")
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
+        # Запускаем бота
+        logger.info("🔍 Рекламный Инспектор запущен!")
+        print("INFO: Бот запущен успешно!")
+        application.run_polling(allowed_updates=Update.ALL_TYPES)
+    except Exception as e:
+        logger.error(f"Критическая ошибка при запуске бота: {e}", exc_info=True)
+        print(f"ERROR: Критическая ошибка: {e}")
+        raise
 
 
 if __name__ == '__main__':
