@@ -669,6 +669,12 @@ def main():
         logger.info("Начинаю запуск бота...")
         logger.info(f"LOG_LEVEL: {LOG_LEVEL}")
         logger.info(f"ADMIN_CHAT_ID: {'установлен' if ADMIN_CHAT_ID else 'не установлен'}")
+        logger.info(f"TELEGRAM_BOT_TOKEN: {'установлен' if TELEGRAM_BOT_TOKEN else 'НЕ УСТАНОВЛЕН!'}")
+        
+        # Проверяем токен перед созданием приложения
+        if not TELEGRAM_BOT_TOKEN or len(TELEGRAM_BOT_TOKEN) < 10:
+            logger.error("TELEGRAM_BOT_TOKEN не установлен или неверный!")
+            raise ValueError("TELEGRAM_BOT_TOKEN обязателен для работы бота")
         
         # Создаем приложение
         application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
@@ -701,7 +707,20 @@ def main():
         # Запускаем бота
         logger.info("🔍 Рекламный Инспектор запущен!")
         print("INFO: Бот запущен успешно!")
-        application.run_polling(allowed_updates=Update.ALL_TYPES)
+        
+        # Запускаем polling с обработкой ошибок
+        try:
+            application.run_polling(
+                allowed_updates=Update.ALL_TYPES,
+                drop_pending_updates=True,
+                close_loop=False
+            )
+        except KeyboardInterrupt:
+            logger.info("Бот остановлен пользователем")
+        except Exception as e:
+            logger.error(f"Критическая ошибка в polling: {e}", exc_info=True)
+            print(f"ERROR: Критическая ошибка в polling: {e}")
+            raise
     except Exception as e:
         logger.error(f"Критическая ошибка при запуске бота: {e}", exc_info=True)
         print(f"ERROR: Критическая ошибка: {e}")
