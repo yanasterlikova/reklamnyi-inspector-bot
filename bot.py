@@ -710,16 +710,25 @@ def main():
         
         # Запускаем polling с обработкой ошибок
         try:
+            # Проверяем токен перед запуском
+            if not TELEGRAM_BOT_TOKEN:
+                raise ValueError("TELEGRAM_BOT_TOKEN не установлен!")
+            
+            logger.info("Запускаю polling...")
             application.run_polling(
                 allowed_updates=Update.ALL_TYPES,
                 drop_pending_updates=True,
-                close_loop=False
+                close_loop=False,
+                stop_signals=None  # Не останавливаться при сигналах
             )
         except KeyboardInterrupt:
             logger.info("Бот остановлен пользователем")
         except Exception as e:
             logger.error(f"Критическая ошибка в polling: {e}", exc_info=True)
             print(f"ERROR: Критическая ошибка в polling: {e}")
+            import traceback
+            traceback.print_exc()
+            # Не падаем сразу, пробуем перезапустить
             raise
     except Exception as e:
         logger.error(f"Критическая ошибка при запуске бота: {e}", exc_info=True)
