@@ -38,13 +38,21 @@ if not TELEGRAM_BOT_TOKEN:
 
 # Инициализация компонентов
 try:
+    logger.info("Инициализация компонентов...")
     analyzer = MaterialAnalyzer()
+    logger.info("MaterialAnalyzer инициализирован")
     report_generator = ReportGenerator()
+    logger.info("ReportGenerator инициализирован")
     pdf_generator = PDFGenerator()
+    logger.info("PDFGenerator инициализирован")
     db = Database()
-    logger.info("Компоненты инициализированы успешно")
+    logger.info("Database инициализирована")
+    logger.info("Все компоненты инициализированы успешно")
 except Exception as e:
-    logger.error(f"Ошибка инициализации компонентов: {e}")
+    logger.error(f"Ошибка инициализации компонентов: {e}", exc_info=True)
+    print(f"ERROR: Ошибка инициализации компонентов: {e}")
+    import traceback
+    traceback.print_exc()
     raise
 
 # Состояния для регистрации
