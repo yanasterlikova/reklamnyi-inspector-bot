@@ -397,10 +397,14 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_material(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработка материала (URL или текст)"""
     try:
+        logger.info("handle_material вызван")
         telegram_id = str(update.effective_user.id)
+        logger.info(f"Telegram ID: {telegram_id}")
         
         # Проверяем регистрацию
+        logger.info("Проверяю регистрацию пользователя...")
         if not db.is_user_registered(telegram_id):
+            logger.info("Пользователь не зарегистрирован")
             await update.message.reply_text(
                 "⚠️ Для проверки материалов нужна регистрация.\n\n"
                 "Отправь /start для регистрации.",
@@ -408,42 +412,57 @@ async def handle_material(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
         
+        logger.info("Пользователь зарегистрирован")
         text = update.message.text.strip()
+        logger.info(f"Получен текст: {text[:50]}...")
         
         # Пропускаем команды
         if text.startswith('/'):
+            logger.info("Пропускаю команду")
             return
         
         # Определяем тип материала
         is_url = text.startswith('http://') or text.startswith('https://')
+        logger.info(f"Тип материала: {'URL' if is_url else 'Текст'}")
         
         if is_url:
+            logger.info("Вызываю handle_url...")
             await handle_url(update, context, text)
         else:
+            logger.info("Вызываю handle_text_material...")
             await handle_text_material(update, context, text)
+        logger.info("handle_material завершен успешно")
     except Exception as e:
         logger.error(f"Ошибка в handle_material: {e}", exc_info=True)
+        import traceback
+        traceback.print_exc()
         try:
             await update.message.reply_text(
-                "❌ Произошла ошибка при обработке запроса. Попробуй еще раз."
+                f"❌ Произошла ошибка при обработке запроса: {str(e)}\n\n"
+                "Попробуй еще раз или отправь /help"
             )
-        except:
-            pass
+        except Exception as send_error:
+            logger.error(f"Ошибка отправки сообщения об ошибке: {send_error}", exc_info=True)
 
 
 async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE, url: str):
     """Обработка URL"""
+    logger.info(f"handle_url вызван с URL: {url}")
     telegram_id = str(update.effective_user.id)
     
     try:
+        logger.info("Отправляю сообщение 'Анализирую сайт...'")
         await update.message.reply_text("🔍 Анализирую сайт... Пожалуйста, подожди.")
+        logger.info("Сообщение отправлено")
     except Exception as e:
         logger.error(f"Ошибка отправки сообщения: {e}", exc_info=True)
         return
     
     try:
         # Анализируем сайт
+        logger.info("Начинаю анализ URL...")
         analysis_result = analyzer.analyze_url(url)
+        logger.info(f"Анализ завершен. Результат: {analysis_result.get('verdict', 'UNKNOWN')}")
         
         if analysis_result.get('error'):
             await update.message.reply_text(
@@ -632,49 +651,64 @@ async def send_brief_report(
     material_info: dict
 ):
     """Отправляет краткий отчет пользователю"""
-    verdict = analysis_result.get('verdict', 'ERROR')
-    
-    verdict_emoji = {
-        'СООТВЕТСТВУЕТ': '✅',
-        'ЧАСТИЧНОЕ_НАРУШЕНИЕ': '⚠️',
-        'НЕ_СООТВЕТСТВУЕТ': '❌',
-        'КРИТИЧЕСКИЕ_НАРУШЕНИЯ': '🚨',
-        'ERROR': '❌'
-    }
-    
-    emoji = verdict_emoji.get(verdict, '❓')
-    verdict_text = verdict.replace('_', ' ')
-    
-    # Формируем краткий отчет
-    report_text = f"""
+    try:
+        logger.info("send_brief_report вызван")
+        verdict = analysis_result.get('verdict', 'ERROR')
+        logger.info(f"Verdict: {verdict}")
+        
+        verdict_emoji = {
+            'СООТВЕТСТВУЕТ': '✅',
+            'ЧАСТИЧНОЕ_НАРУШЕНИЕ': '⚠️',
+            'НЕ_СООТВЕТСТВУЕТ': '❌',
+            'КРИТИЧЕСКИЕ_НАРУШЕНИЯ': '🚨',
+            'ERROR': '❌'
+        }
+        
+        emoji = verdict_emoji.get(verdict, '❓')
+        verdict_text = verdict.replace('_', ' ')
+        
+        # Формируем краткий отчет
+        report_text = f"""
 {emoji} **ВЕРДИКТ: {verdict_text}**
 
 📋 **Материал:** {material_info.get('url', material_info.get('text', 'Не указано'))[:80]}
 📅 **Дата:** {datetime.now().strftime('%d.%m.%Y %H:%M')}
 
 """
-    
-    # Дисклеймер
-    disclaimer = analysis_result.get('disclaimer', {})
-    if disclaimer.get('found'):
-        report_text += "✅ **Дисклеймер:** Найден\n"
-    else:
-        report_text += "❌ **Дисклеймер:** Не найден\n"
-    
-    # Нарушения
-    total_violations = analysis_result.get('total_violations', 0)
-    
-    if total_violations > 0:
-        report_text += f"\n❌ **Нарушений найдено:** {total_violations}\n"
-    else:
-        report_text += "\n✅ **Нарушений не обнаружено**\n"
-    
-    report_text += "\n📄 Загружаю PDF-отчет с рекомендациями..."
-    
-    await update.message.reply_text(
-        report_text,
-        parse_mode=ParseMode.MARKDOWN
-    )
+        
+        # Дисклеймер
+        disclaimer = analysis_result.get('disclaimer', {})
+        if disclaimer.get('found'):
+            report_text += "✅ **Дисклеймер:** Найден\n"
+        else:
+            report_text += "❌ **Дисклеймер:** Не найден\n"
+        
+        # Нарушения
+        total_violations = analysis_result.get('total_violations', 0)
+        
+        if total_violations > 0:
+            report_text += f"\n❌ **Нарушений найдено:** {total_violations}\n"
+        else:
+            report_text += "\n✅ **Нарушений не обнаружено**\n"
+        
+        report_text += "\n📄 Загружаю PDF-отчет с рекомендациями..."
+        
+        logger.info("Отправляю краткий отчет...")
+        await update.message.reply_text(
+            report_text,
+            parse_mode=ParseMode.MARKDOWN
+        )
+        logger.info("Краткий отчет отправлен")
+    except Exception as e:
+        logger.error(f"Ошибка в send_brief_report: {e}", exc_info=True)
+        import traceback
+        traceback.print_exc()
+        try:
+            await update.message.reply_text(
+                "❌ Ошибка при формировании отчета. Продолжаю обработку..."
+            )
+        except:
+            pass
 
 
 def main():
