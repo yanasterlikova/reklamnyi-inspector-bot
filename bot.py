@@ -416,7 +416,11 @@ async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE, url: st
     """Обработка URL"""
     telegram_id = str(update.effective_user.id)
     
-    await update.message.reply_text("🔍 Анализирую сайт... Пожалуйста, подожди.")
+    try:
+        await update.message.reply_text("🔍 Анализирую сайт... Пожалуйста, подожди.")
+    except Exception as e:
+        logger.error(f"Ошибка отправки сообщения: {e}", exc_info=True)
+        return
     
     try:
         # Анализируем сайт
@@ -500,18 +504,25 @@ async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE, url: st
             )
         
     except Exception as e:
-        logger.error(f"Ошибка при анализе URL: {e}")
-        await update.message.reply_text(
-            "❌ Произошла ошибка при анализе сайта.\n\n"
-            "Попробуй отправить текст материала."
-        )
+        logger.error(f"Ошибка при анализе URL: {e}", exc_info=True)
+        try:
+            await update.message.reply_text(
+                "❌ Произошла ошибка при анализе сайта.\n\n"
+                "Попробуй отправить текст материала."
+            )
+        except Exception as send_error:
+            logger.error(f"Ошибка отправки сообщения об ошибке: {send_error}", exc_info=True)
 
 
 async def handle_text_material(update: Update, context: ContextTypes.DEFAULT_TYPE, text: str):
     """Обработка текста"""
     telegram_id = str(update.effective_user.id)
     
-    await update.message.reply_text("🔍 Анализирую текст... Пожалуйста, подожди.")
+    try:
+        await update.message.reply_text("🔍 Анализирую текст... Пожалуйста, подожди.")
+    except Exception as e:
+        logger.error(f"Ошибка отправки сообщения: {e}", exc_info=True)
+        return
     
     try:
         # Анализируем текст
@@ -588,8 +599,11 @@ async def handle_text_material(update: Update, context: ContextTypes.DEFAULT_TYP
             )
         
     except Exception as e:
-        logger.error(f"Ошибка при анализе текста: {e}")
-        await update.message.reply_text("❌ Произошла ошибка при анализе текста.")
+        logger.error(f"Ошибка при анализе текста: {e}", exc_info=True)
+        try:
+            await update.message.reply_text("❌ Произошла ошибка при анализе текста.")
+        except Exception as send_error:
+            logger.error(f"Ошибка отправки сообщения об ошибке: {send_error}", exc_info=True)
 
 
 async def send_brief_report(
