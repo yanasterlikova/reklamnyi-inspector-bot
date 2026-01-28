@@ -583,31 +583,31 @@ def main():
         # Создаем приложение
         application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
         logger.info("Приложение создано успешно")
-    
-    # Регистрация пользователя (ConversationHandler)
-    conv_handler = ConversationHandler(
-        entry_points=[CommandHandler("start", start_command)],
-        states={
-            ASKING_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, asking_name)],
-            ASKING_PHONE: [
-                MessageHandler(filters.CONTACT, asking_phone),
-                MessageHandler(filters.TEXT & ~filters.COMMAND, asking_phone)
-            ],
-            ASKING_GDPR: [CallbackQueryHandler(gdpr_callback)]
-        },
-        fallbacks=[CommandHandler("cancel", cancel_registration)]
-    )
-    
-    application.add_handler(conv_handler)
-    
-    # Остальные команды
-    application.add_handler(CommandHandler("help", help_command))
-    application.add_handler(CommandHandler("profile", profile_command))
-    application.add_handler(CommandHandler("stats", stats_command))
-    
-    # Обработка материалов
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_material))
-    
+        
+        # Регистрация пользователя (ConversationHandler)
+        conv_handler = ConversationHandler(
+            entry_points=[CommandHandler("start", start_command)],
+            states={
+                ASKING_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, asking_name)],
+                ASKING_PHONE: [
+                    MessageHandler(filters.CONTACT, asking_phone),
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, asking_phone)
+                ],
+                ASKING_GDPR: [CallbackQueryHandler(gdpr_callback)]
+            },
+            fallbacks=[CommandHandler("cancel", cancel_registration)]
+        )
+        
+        application.add_handler(conv_handler)
+        
+        # Остальные команды
+        application.add_handler(CommandHandler("help", help_command))
+        application.add_handler(CommandHandler("profile", profile_command))
+        application.add_handler(CommandHandler("stats", stats_command))
+        
+        # Обработка материалов
+        application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_material))
+        
         # Запускаем бота
         logger.info("🔍 Рекламный Инспектор запущен!")
         print("INFO: Бот запущен успешно!")
