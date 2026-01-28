@@ -10,14 +10,26 @@ from typing import Optional, Dict, List
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 if DATABASE_URL:
-    # PostgreSQL для Railway
-    import psycopg2
-    from psycopg2.extras import RealDictCursor
-    USE_POSTGRESQL = True
+    # PostgreSQL для Railway/Render
+    # Пробуем импортировать psycopg2 (для Python < 3.13)
+    try:
+        import psycopg2
+        from psycopg2.extras import RealDictCursor
+        USE_POSTGRESQL = True
+        USE_PSYCOPG3 = False
+    except ImportError:
+        # Если psycopg2 не работает, пробуем psycopg3 (для Python 3.13+)
+        try:
+            import psycopg
+            USE_POSTGRESQL = True
+            USE_PSYCOPG3 = True
+        except ImportError:
+            raise ImportError("Не установлен ни psycopg2, ни psycopg3!")
 else:
     # SQLite для локальной разработки
     import sqlite3
     USE_POSTGRESQL = False
+    USE_PSYCOPG3 = False
 
 
 class Database:
@@ -26,6 +38,7 @@ class Database:
     def __init__(self, db_path: str = "data/users.db"):
         self.db_path = db_path
         self.use_postgresql = USE_POSTGRESQL
+        self.use_psycopg3 = USE_PSYCOPG3 if USE_POSTGRESQL else False
         
         if not self.use_postgresql:
             # SQLite: создаем директорию если нужно
@@ -36,7 +49,12 @@ class Database:
     def _get_connection(self):
         """Получить соединение с базой данных"""
         if self.use_postgresql:
-            return psycopg2.connect(DATABASE_URL)
+            if USE_PSYCOPG3:
+                # Используем psycopg3 (для Python 3.13+)
+                return psycopg.connect(DATABASE_URL)
+            else:
+                # Используем psycopg2 (для Python < 3.13)
+                return psycopg2.connect(DATABASE_URL)
         else:
             conn = sqlite3.connect(self.db_path)
             conn.row_factory = sqlite3.Row
@@ -149,11 +167,17 @@ class Database:
             return True
         except Exception as e:
             if self.use_postgresql:
-                import psycopg2
-                if isinstance(e, psycopg2.IntegrityError):
-                    # Пользователь уже существует
-                    conn.close()
-                    return False
+                if self.use_psycopg3:
+                    # psycopg3 использует другой тип ошибки
+                    if hasattr(e, 'sqlstate') and e.sqlstate == '23505':  # Unique violation
+                        conn.close()
+                        return False
+                else:
+                    import psycopg2
+                    if isinstance(e, psycopg2.IntegrityError):
+                        # Пользователь уже существует
+                        conn.close()
+                        return False
             else:
                 if isinstance(e, sqlite3.IntegrityError):
                     conn.close()
@@ -177,9 +201,13 @@ class Database:
         
         if row:
             if self.use_postgresql:
-                # PostgreSQL возвращает tuple, конвертируем в dict
-                columns = [desc[0] for desc in cursor.description]
-                return dict(zip(columns, row))
+                if self.use_psycopg3:
+                    # psycopg3 возвращает Row объект (как SQLite)
+                    return dict(row)
+                else:
+                    # psycopg2 возвращает tuple, конвертируем в dict
+                    columns = [desc[0] for desc in cursor.description]
+                    return dict(zip(columns, row))
             else:
                 # SQLite уже возвращает Row объект
                 return dict(row)
@@ -261,9 +289,13 @@ class Database:
         conn.close()
         
         if self.use_postgresql:
-            # Конвертируем tuples в dicts
-            columns = [desc[0] for desc in cursor.description]
-            return [dict(zip(columns, row)) for row in rows]
+            if self.use_psycopg3:
+                # psycopg3 возвращает Row объекты (как SQLite)
+                return [dict(row) for row in rows]
+            else:
+                # psycopg2 возвращает tuples, конвертируем в dicts
+                columns = [desc[0] for desc in cursor.description]
+                return [dict(zip(columns, row)) for row in rows]
         else:
             return [dict(row) for row in rows]
     
